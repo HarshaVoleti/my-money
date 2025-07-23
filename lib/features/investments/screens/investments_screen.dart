@@ -4,6 +4,7 @@ import 'package:my_money/core/models/investment_model.dart';
 import 'package:my_money/core/models/investment_position.dart';
 import 'package:my_money/features/investments/providers/investment_riverpod_providers.dart';
 import 'package:my_money/features/investments/providers/investment_provider.dart';
+import 'package:my_money/features/investments/providers/investment_live_price_provider.dart';
 import 'package:my_money/features/investments/screens/add_investment_screen.dart';
 import 'package:my_money/core/utils/currency_formatter.dart';
 
@@ -278,17 +279,60 @@ class InvestmentsScreen extends ConsumerWidget {
       physics: const NeverScrollableScrollPhysics(),
       children: investmentProvider.positions.map<Widget>((InvestmentPosition position) {
         print('🔧 Rendering position: ${position.symbol} (${position.orderCount} orders)');
-        return _buildPositionExpansionTile(context, position, investmentProvider);
+        return Consumer(
+          builder: (context, ref, _) {
+            final livePriceAsync = ref.watch(livePriceStreamProvider(position));
+            return livePriceAsync.when(
+              data: (livePrice) {
+                final liveCurrentValue = livePrice * position.totalQuantity;
+                final liveProfitLoss = liveCurrentValue - position.totalInvestment;
+                final liveProfitLossPercentage = position.totalInvestment > 0 ? (liveProfitLoss / position.totalInvestment) * 100 : 0.0;
+                final isProfit = liveProfitLoss > 0;
+                return _buildPositionExpansionTile(
+                  context,
+                  position.copyWith(currentPrice: livePrice),
+                  investmentProvider,
+                  liveCurrentValue: liveCurrentValue,
+                  liveProfitLoss: liveProfitLoss,
+                  liveProfitLossPercentage: liveProfitLossPercentage,
+                  isProfit: isProfit,
+                );
+              },
+              loading: () => _buildPositionExpansionTile(
+                context,
+                position,
+                investmentProvider,
+                isLoading: true,
+              ),
+              error: (e, _) => _buildPositionExpansionTile(
+                context,
+                position,
+                investmentProvider,
+                error: e.toString(),
+              ),
+            );
+          },
+        );
       }).toList(),
     );
   }
 
-  Widget _buildPositionExpansionTile(BuildContext context, InvestmentPosition position, InvestmentProvider investmentProvider) {
+  Widget _buildPositionExpansionTile(
+    BuildContext context,
+    InvestmentPosition position,
+    InvestmentProvider investmentProvider, {
+    double? liveCurrentValue,
+    double? liveProfitLoss,
+    double? liveProfitLossPercentage,
+    bool? isProfit,
+    bool isLoading = false,
+    String? error,
+  }) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ExpansionTile(
         leading: CircleAvatar(
-          backgroundColor: position.isProfit ? Colors.green : Colors.red,
+          backgroundColor: (isProfit ?? position.isProfit) ? Colors.green : Colors.red,
           child: Text(
             position.symbol.substring(0, 1).toUpperCase(),
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -317,17 +361,19 @@ class InvestmentsScreen extends ConsumerWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                isLoading
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(
+                        CurrencyFormatter.format(liveCurrentValue ?? position.currentValue),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                 Text(
-                  CurrencyFormatter.format(position.currentValue),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  '${position.profitLoss >= 0 ? '+' : ''}${CurrencyFormatter.format(position.profitLoss)}',
+                  '${(liveProfitLoss ?? position.profitLoss) >= 0 ? '+' : ''}${CurrencyFormatter.format(liveProfitLoss ?? position.profitLoss)}',
                   style: TextStyle(
-                    color: position.isProfit ? Colors.green : Colors.red,
+                    color: (isProfit ?? position.isProfit) ? Colors.green : Colors.red,
                     fontSize: 12,
                   ),
                 ),
@@ -348,7 +394,7 @@ class InvestmentsScreen extends ConsumerWidget {
                       style: const TextStyle(fontSize: 12),
                     ),
                     Text(
-                      '${position.orderCount} order(s) • Current: ₹${position.currentPrice.toStringAsFixed(2)}',
+                      '${position.orderCount} order(s) • Current: ₹${(liveCurrentValue != null ? (liveCurrentValue / position.totalQuantity).toStringAsFixed(2) : position.currentPrice.toStringAsFixed(2))}',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.grey[600],
@@ -376,6 +422,11 @@ class InvestmentsScreen extends ConsumerWidget {
           ),
         ),
         children: [
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text('Error fetching live price: $error', style: const TextStyle(color: Colors.red)),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Column(

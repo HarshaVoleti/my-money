@@ -17,20 +17,29 @@ final watchlistProvider = StateProvider<List<WatchlistItem>>((ref) => [
 final alphaVantageApiKey = 'LSSBUCDFL2QMC3H0';
 
 
-final alphaVantageProvider = FutureProvider.family<Map<String, dynamic>, WatchlistItem>((ref, item) async {
-  final url = Uri.parse(
-    'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${item.symbol}.${item.exchange}&apikey=$alphaVantageApiKey'
-  );
-  final response = await http.get(url);
-  if (response.statusCode == 200) {
-    final data = jsonDecode(response.body);
-    final quote = data['Global Quote'] as Map<String, dynamic>?;
-    if (quote == null || quote.isEmpty) {
-      throw Exception('No data for ${item.symbol}');
+
+final alphaVantageStreamProvider = StreamProvider.family<Map<String, dynamic>, WatchlistItem>((ref, item) async* {
+  while (true) {
+    try {
+      final url = Uri.parse(
+        'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${item.symbol}.${item.exchange}&apikey=$alphaVantageApiKey'
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final quote = data['Global Quote'] as Map<String, dynamic>?;
+        if (quote == null || quote.isEmpty) {
+          throw Exception('No data for ${item.symbol}');
+        }
+        yield quote;
+      } else {
+        throw Exception('Failed to fetch data for ${item.symbol}');
+      }
+    } catch (e) {
+      // On error, yield an error map so UI can show error
+      yield {'error': e.toString()};
     }
-    return quote;
-  } else {
-    throw Exception('Failed to fetch data for ${item.symbol}');
+    await Future<void>.delayed(const Duration(seconds: 10));
   }
 });
 
@@ -125,18 +134,22 @@ class _TradingScreenState extends ConsumerState<TradingScreen> {
 }
 
 
+
 class _LiveQuoteTile extends ConsumerWidget {
   final WatchlistItem item;
   const _LiveQuoteTile({required this.item});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final quoteAsync = ref.watch(alphaVantageProvider(item));
+    final quoteAsync = ref.watch(alphaVantageStreamProvider(item));
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: quoteAsync.when(
           data: (data) {
+            if (data.containsKey('error')) {
+              return Text('Error: ${data['error']}');
+            }
             final price = data['05. price'] ?? '-';
             final change = double.tryParse(data['09. change']?.toString().replaceAll(',', '') ?? '0') ?? 0.0;
             final percentRaw = data['10. change percent']?.toString() ?? '0%';
