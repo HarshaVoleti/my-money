@@ -17,9 +17,8 @@ import 'package:my_money/features/transactions/screens/transactions_screen.dart'
 import 'package:my_money/shared/widgets/dashboard_widgets.dart';
 import 'package:my_money/features/home/screens/all_quick_actions_screen.dart';
 import 'package:my_money/features/analytics/screens/analytics_screen.dart';
-
-
 import '../../credit_cards/screens/credit_cards_screen.dart';
+import '../../trading/screens/trading_screen.dart';
 
 class MainScreen extends ConsumerWidget {
   const MainScreen({super.key});
@@ -169,6 +168,18 @@ class MainScreen extends ConsumerWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (context) => const CreditCardsScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.show_chart),
+              title: const Text('Trading & Watchlist'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const TradingScreen(),
                   ),
                 );
               },
