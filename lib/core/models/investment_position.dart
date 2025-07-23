@@ -43,6 +43,29 @@ class InvestmentPosition {
     );
   }
 
+  // create copy with for investment position
+  InvestmentPosition copyWith({
+    String? symbol,
+    String? name,
+    InvestmentType? type,
+    double? currentPrice,
+    List<InvestmentModel>? orders,
+    String? sector,
+    LabelColor? color,
+    List<String>? tags,
+  }) {
+    return InvestmentPosition(
+      symbol: symbol ?? this.symbol,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      currentPrice: currentPrice ?? this.currentPrice,
+      orders: orders ?? this.orders,
+      sector: sector ?? this.sector,
+      color: color ?? this.color,
+      tags: tags ?? this.tags,
+    );
+  }
+
   // Calculated properties for the aggregated position
   double get totalQuantity => orders.fold(0.0, (sum, order) => sum + order.quantity);
   
