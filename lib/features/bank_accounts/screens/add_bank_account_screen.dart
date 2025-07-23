@@ -25,6 +25,12 @@ class _AddBankAccountScreenState extends ConsumerState<AddBankAccountScreen> {
   final _branchNameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _balanceController = TextEditingController();
+  // Credit card fields
+  final _cardNumberController = TextEditingController();
+  final _expiryController = TextEditingController();
+  final _cvvController = TextEditingController();
+  final _creditLimitController = TextEditingController();
+  DateTime? _billingDate;
 
   AccountType _selectedType = AccountType.bank;
   LabelColor _selectedColor = LabelColor.blue;
@@ -52,6 +58,12 @@ class _AddBankAccountScreenState extends ConsumerState<AddBankAccountScreen> {
     _selectedType = account.type;
     _selectedColor = account.color;
     _isDefault = account.isDefault;
+    // Credit card fields
+    _cardNumberController.text = account.cardNumber ?? '';
+    _expiryController.text = account.expiryDate ?? '';
+    _cvvController.text = account.cvv ?? '';
+    _creditLimitController.text = account.creditLimit?.toString() ?? '';
+    _billingDate = account.billingDate;
   }
 
   @override
@@ -63,12 +75,18 @@ class _AddBankAccountScreenState extends ConsumerState<AddBankAccountScreen> {
     _branchNameController.dispose();
     _descriptionController.dispose();
     _balanceController.dispose();
+    _cardNumberController.dispose();
+    _expiryController.dispose();
+    _cvvController.dispose();
+    _creditLimitController.dispose();
+    // No need to dispose _billingDate (DateTime)
     super.dispose();
   }
 
   Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
       final balance = double.tryParse(_balanceController.text) ?? 0.0;
+      final creditLimit = double.tryParse(_creditLimitController.text);
 
       if (_isEditing) {
         final updatedAccount = widget.account!.copyWith(
@@ -86,6 +104,11 @@ class _AddBankAccountScreenState extends ConsumerState<AddBankAccountScreen> {
           balance: balance,
           isDefault: _isDefault,
           updatedAt: DateTime.now(),
+          cardNumber: _selectedType == AccountType.creditCard ? _cardNumberController.text.trim() : null,
+          expiryDate: _selectedType == AccountType.creditCard ? _expiryController.text.trim() : null,
+          cvv: _selectedType == AccountType.creditCard ? _cvvController.text.trim() : null,
+          creditLimit: _selectedType == AccountType.creditCard ? creditLimit : null,
+            billingDate: _selectedType == AccountType.creditCard ? _billingDate : null,
         );
 
         await ref.read(bankAccountNotifierProvider.notifier).updateBankAccount(updatedAccount);
@@ -104,6 +127,11 @@ class _AddBankAccountScreenState extends ConsumerState<AddBankAccountScreen> {
               ? _descriptionController.text.trim() : null,
           balance: balance,
           isDefault: _isDefault,
+          cardNumber: _selectedType == AccountType.creditCard ? _cardNumberController.text.trim() : null,
+          expiryDate: _selectedType == AccountType.creditCard ? _expiryController.text.trim() : null,
+          cvv: _selectedType == AccountType.creditCard ? _cvvController.text.trim() : null,
+          creditLimit: _selectedType == AccountType.creditCard ? creditLimit : null,
+            billingDate: _selectedType == AccountType.creditCard ? _billingDate : null,
         );
       }
 
@@ -224,6 +252,7 @@ class _AddBankAccountScreenState extends ConsumerState<AddBankAccountScreen> {
 
               const SizedBox(height: 16),
 
+
               // IFSC Code (optional for bank accounts)
               if (_selectedType == AccountType.bank)
                 Column(
@@ -252,6 +281,113 @@ class _AddBankAccountScreenState extends ConsumerState<AddBankAccountScreen> {
                       textInputAction: TextInputAction.next,
                       readOnly: isLoading,
                     ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+
+              // Credit Card Fields
+              if (_selectedType == AccountType.creditCard || _selectedType == AccountType.debitCard)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    CustomTextField(
+                      controller: _cardNumberController,
+                      labelText: 'Card Number',
+                      hintText: 'Enter card number',
+                      prefixIcon: Icons.credit_card,
+                      validator: RequiredValidator(errorText: 'Card number is required'),
+                      textInputAction: TextInputAction.next,
+                      readOnly: isLoading,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomTextField(
+                            controller: _expiryController,
+                            labelText: 'Expiry (MM/YY)',
+                            hintText: 'MM/YY',
+                            prefixIcon: Icons.calendar_today,
+                            validator: RequiredValidator(errorText: 'Expiry is required'),
+                            textInputAction: TextInputAction.next,
+                            readOnly: isLoading,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: CustomTextField(
+                            controller: _cvvController,
+                            labelText: 'CVV',
+                            hintText: 'CVV',
+                            prefixIcon: Icons.lock,
+                            validator: RequiredValidator(errorText: 'CVV is required'),
+                            textInputAction: TextInputAction.next,
+                            readOnly: isLoading,
+                            obscureText: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (_selectedType == AccountType.creditCard)
+                      CustomTextField(
+                        controller: _creditLimitController,
+                        labelText: 'Credit Limit',
+                        hintText: 'Enter credit limit',
+                        prefixIcon: Icons.trending_up,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        validator: RequiredValidator(errorText: 'Credit limit is required'),
+                        textInputAction: TextInputAction.next,
+                        readOnly: isLoading,
+                      ),
+                    if (_selectedType == AccountType.creditCard)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 16),
+                          Text('Billing Date', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 6),
+                          InkWell(
+                            onTap: isLoading
+                                ? null
+                                : () async {
+                                    final now = DateTime.now();
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: _billingDate ?? now,
+                                      firstDate: DateTime(now.year - 1),
+                                      lastDate: DateTime(now.year + 5),
+                                      helpText: 'Select Billing Date',
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        _billingDate = picked;
+                                      });
+                                    }
+                                  },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.event, color: Colors.grey[700]),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    _billingDate != null
+                                        ? '${_billingDate!.day.toString().padLeft(2, '0')}/${_billingDate!.month.toString().padLeft(2, '0')}/${_billingDate!.year}'
+                                        : 'Select billing date',
+                                    style: Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     const SizedBox(height: 16),
                   ],
                 ),

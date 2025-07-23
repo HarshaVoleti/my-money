@@ -66,6 +66,11 @@ class BankAccountService {
     String? iconUrl,
     double balance = 0.0,
     bool isDefault = false,
+    String? cardNumber,
+    String? expiryDate,
+    String? cvv,
+    double? creditLimit,
+    DateTime? billingDate,
   }) async {
     try {
       final docRef = _firestore.collection(_collectionName).doc();
@@ -93,6 +98,11 @@ class BankAccountService {
         isDefault: isDefault,
         createdAt: now,
         updatedAt: now,
+        cardNumber: cardNumber,
+        expiryDate: expiryDate,
+        cvv: cvv,
+        creditLimit: creditLimit,
+        billingDate: billingDate,
       );
 
       await docRef.set(bankAccount.toMap());

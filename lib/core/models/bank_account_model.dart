@@ -35,6 +35,8 @@ enum AccountStatus {
   }
 }
 
+// Credit card-specific fields: cardNumber, expiryDate, cvv, creditLimit
+
 class BankAccountModel {
   final String id;
   final String userId;
@@ -53,6 +55,14 @@ class BankAccountModel {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  // Credit card fields
+  final String? cardNumber;
+  final String? expiryDate; // MM/YY or MM/YYYY
+  final String? cvv;
+  final double? creditLimit;
+
+  final DateTime? billingDate;
+
   const BankAccountModel({
     required this.id,
     required this.userId,
@@ -70,6 +80,11 @@ class BankAccountModel {
     this.isDefault = false,
     required this.createdAt,
     required this.updatedAt,
+    this.cardNumber,
+    this.expiryDate,
+    this.cvv,
+    this.creditLimit,
+    this.billingDate,
   });
 
   Map<String, dynamic> toMap() {
@@ -90,6 +105,11 @@ class BankAccountModel {
       'isDefault': isDefault,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'cardNumber': cardNumber,
+      'expiryDate': expiryDate,
+      'cvv': cvv,
+      'creditLimit': creditLimit,
+      'billingDate': billingDate?.toIso8601String(),
     };
   }
 
@@ -112,6 +132,11 @@ class BankAccountModel {
       isDefault: data['isDefault'] as bool? ?? false,
       createdAt: DateTime.parse(data['createdAt']?.toString() ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(data['updatedAt']?.toString() ?? DateTime.now().toIso8601String()),
+      cardNumber: data['cardNumber']?.toString(),
+      expiryDate: data['expiryDate']?.toString(),
+      cvv: data['cvv']?.toString(),
+      creditLimit: (data['creditLimit'] as num?)?.toDouble(),
+      billingDate: data['billingDate'] != null ? DateTime.tryParse(data['billingDate'].toString()) : null,
     );
   }
 
@@ -133,6 +158,11 @@ class BankAccountModel {
       isDefault: data['isDefault'] as bool? ?? false,
       createdAt: DateTime.parse(data['createdAt']?.toString() ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(data['updatedAt']?.toString() ?? DateTime.now().toIso8601String()),
+      cardNumber: data['cardNumber']?.toString(),
+      expiryDate: data['expiryDate']?.toString(),
+      cvv: data['cvv']?.toString(),
+      creditLimit: (data['creditLimit'] as num?)?.toDouble(),
+      billingDate: data['billingDate'] != null ? DateTime.tryParse(data['billingDate'].toString()) : null,
     );
   }
 
@@ -153,6 +183,11 @@ class BankAccountModel {
     bool? isDefault,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? cardNumber,
+    String? expiryDate,
+    String? cvv,
+    double? creditLimit,
+    DateTime? billingDate,
   }) {
     return BankAccountModel(
       id: id ?? this.id,
@@ -171,6 +206,11 @@ class BankAccountModel {
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      cardNumber: cardNumber ?? this.cardNumber,
+      expiryDate: expiryDate ?? this.expiryDate,
+      cvv: cvv ?? this.cvv,
+      creditLimit: creditLimit ?? this.creditLimit,
+      billingDate: billingDate ?? this.billingDate,
     );
   }
 

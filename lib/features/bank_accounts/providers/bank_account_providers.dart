@@ -44,6 +44,11 @@ class BankAccountNotifier extends StateNotifier<AsyncValue<BankAccountModel?>> {
     String? iconUrl,
     double balance = 0.0,
     bool isDefault = false,
+    String? cardNumber,
+    String? expiryDate,
+    String? cvv,
+    double? creditLimit,
+    DateTime? billingDate,
   }) async {
     final authState = ref.read(authNotifierProvider);
     final user = authState.valueOrNull;
@@ -69,6 +74,11 @@ class BankAccountNotifier extends StateNotifier<AsyncValue<BankAccountModel?>> {
         iconUrl: iconUrl,
         balance: balance,
         isDefault: isDefault,
+        cardNumber: cardNumber,
+        expiryDate: expiryDate,
+        cvv: cvv,
+        creditLimit: creditLimit,
+        billingDate: billingDate,
       );
       
       state = AsyncValue.data(bankAccount);

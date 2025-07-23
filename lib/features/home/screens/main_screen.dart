@@ -19,6 +19,7 @@ import 'package:my_money/features/analytics/screens/analytics_screen.dart';
 import 'package:my_money/features/analytics/screens/analytics_screen.dart';
 
 import '../../borrow_lend/screens/add_borrow_lend_screen.dart';
+import '../../credit_cards/screens/credit_cards_screen.dart';
 
 class MainScreen extends ConsumerWidget {
   const MainScreen({super.key});
@@ -162,12 +163,12 @@ class MainScreen extends ConsumerWidget {
             ),
             ListTile(
               leading: const Icon(Icons.add_card),
-              title: const Text('Add Borrow/Lend'),
+              title: const Text('Credit Cards'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (context) => const AddBorrowLendScreen(),
+                    builder: (context) => const CreditCardsScreen(),
                   ),
                 );
               },
