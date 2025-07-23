@@ -13,8 +13,12 @@ class InvestmentProvider extends ChangeNotifier {
     required String userId,
   })  : _firestoreService = firestoreService,
         _userId = userId {
+    print('🔧 InvestmentProvider created for user: $_userId');
     if (_userId.isNotEmpty) {
+      print('🔧 Starting to listen to investments');
       _listenToInvestments();
+    } else {
+      print('❌ Empty user ID provided to InvestmentProvider');
     }
   }
   final FirestoreService _firestoreService;
@@ -71,12 +75,20 @@ class InvestmentProvider extends ChangeNotifier {
       InvestmentCalculator.calculateDiversificationScore(_investments);
 
   void _listenToInvestments() {
+    print('🔧 Starting to listen to investments for user: $_userId');
+    
     _firestoreService.getUserInvestments(_userId).listen(
       (investments) {
+        print('📊 Received ${investments.length} investments from Firestore');
+        for (final investment in investments) {
+          print('  - ${investment.name}: ${investment.purchasePrice} x ${investment.quantity}');
+        }
         _investments = investments;
         notifyListeners();
       },
-      onError: (Object error) {
+      onError: (Object error, StackTrace stackTrace) {
+        print('❌ Investment Stream Error: $error');
+        print('Stack trace: $stackTrace');
         _setError(error.toString());
       },
     );
@@ -96,6 +108,8 @@ class InvestmentProvider extends ChangeNotifier {
     LabelColor color = LabelColor.blue,
   }) async {
     try {
+      print('🔧 Adding investment: $name, Price: $purchasePrice, Qty: $quantity');
+      
       _setLoading(true);
       _setError(null);
 
@@ -117,8 +131,13 @@ class InvestmentProvider extends ChangeNotifier {
         createdAt: DateTime.now(),
       );
 
+      print('📊 Investment model created: ${investment.toMap()}');
+      
       await _firestoreService.addInvestment(investment);
-    } on Exception catch (e) {
+      print('✅ Investment added successfully to Firestore');
+    } catch (e, stackTrace) {
+      print('❌ Add Investment Error: $e');
+      print('Stack trace: $stackTrace');
       _setError(e.toString());
     } finally {
       _setLoading(false);
@@ -214,11 +233,13 @@ class InvestmentProvider extends ChangeNotifier {
     );
 
   void _setLoading(bool value) {
+    print('🔄 Investment Provider Loading: $value');
     _isLoading = value;
     notifyListeners();
   }
 
   void _setError(String? value) {
+    print('⚠️ Investment Provider Error: $value');
     _error = value;
     notifyListeners();
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_money/core/models/investment_model.dart';
 import 'package:my_money/features/investments/providers/investment_riverpod_providers.dart';
+import 'package:my_money/features/investments/providers/investment_provider.dart';
 import 'package:my_money/features/investments/screens/add_investment_screen.dart';
 import 'package:my_money/core/utils/currency_formatter.dart';
 
@@ -10,8 +11,16 @@ class InvestmentsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print('🔧 Building InvestmentsScreen');
+    
     final portfolioSummary = ref.watch(portfolioSummaryProvider);
     final investmentProvider = ref.watch(investmentProviderProvider);
+    
+    print('📊 Portfolio Summary in UI: $portfolioSummary');
+    print('📊 Investment Provider State:');
+    print('  - Loading: ${investmentProvider.isLoading}');
+    print('  - Error: ${investmentProvider.error}');
+    print('  - Investments count: ${investmentProvider.investments.length}');
     
     return Scaffold(
       appBar: AppBar(
@@ -21,12 +30,14 @@ class InvestmentsScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () async {
+              print('🔄 Manual refresh triggered');
               await ref.read(investmentProviderProvider).refreshInvestments();
             },
           ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () {
+              print('🔧 Navigate to AddInvestmentScreen');
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (context) => const AddInvestmentScreen(),
@@ -38,6 +49,7 @@ class InvestmentsScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
+          print('🔄 Pull to refresh triggered');
           await ref.read(investmentProviderProvider).refreshInvestments();
         },
         child: SingleChildScrollView(
@@ -151,10 +163,8 @@ class InvestmentsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             
-            // Show investment list or empty state
-            (investmentProvider.investments as List).isEmpty
-                ? _buildEmptyState(context)
-                : _buildInvestmentsList(investmentProvider.investments as List<InvestmentModel>),
+            // Show loading, error, investment list or empty state
+            _buildInvestmentsList(context, investmentProvider),
           ],
         ),
         ),
@@ -207,23 +217,74 @@ class InvestmentsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInvestmentsList(List<InvestmentModel> investments) {
-    return Column(
-      children: investments.map((investment) => 
-        Card(
-          margin: const EdgeInsets.only(bottom: 12),
+  Widget _buildInvestmentsList(BuildContext context, InvestmentProvider investmentProvider) {
+    print('🔧 Building investments list - Loading: ${investmentProvider.isLoading}, Error: ${investmentProvider.error}, Investments count: ${investmentProvider.investments.length}');
+
+    if (investmentProvider.isLoading == true) {
+      print('🔧 Showing loading indicator');
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+    
+    if (investmentProvider.error != null) {
+      print('❌ Showing error state: ${investmentProvider.error}');
+      final errorMessage = investmentProvider.error?.toString() ?? 'Unknown error';
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading investments',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              errorMessage,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                print('� Retrying investment load');
+                // The provider should automatically retry when created
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    if (investmentProvider.investments.isEmpty == true) {
+      print('🔧 Showing empty state');
+      return const Center(
+        child: Text('No investments found'),
+      );
+    }
+
+    print('🔧 Showing investments list with ${investmentProvider.investments.length} items');
+    return ListView(
+      children: investmentProvider.investments.map<Widget>((InvestmentModel investment) {
+        print('🔧 Rendering investment: ${investment.name}');
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Color(investment.color.colorValue),
+              backgroundColor: investment.profitLoss >= 0 ? Colors.green : Colors.red,
               child: Text(
                 investment.name.substring(0, 1).toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(color: Colors.white),
               ),
             ),
-            title: Text(
-              investment.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            title: Text(investment.name),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -258,11 +319,16 @@ class InvestmentsScreen extends ConsumerWidget {
               ],
             ),
             onTap: () {
-              // Navigate to investment details
+              print('🔧 Investment tapped: ${investment.name}');
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => AddInvestmentScreen(investment: investment),
+                ),
+              );
             },
           ),
-        )
-      ).toList(),
+        );
+      }).toList(),
     );
   }
 

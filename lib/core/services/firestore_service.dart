@@ -87,11 +87,18 @@ class FirestoreService {
   // Add investment
   Future<void> addInvestment(InvestmentModel investment) async {
     try {
+      print('🔧 Adding investment to Firestore: ${investment.name}');
+      print('📄 Investment data: ${investment.toMap()}');
+      
       await _firestore
           .collection(AppConstants.investmentsCollection)
           .doc(investment.id)
           .set(investment.toMap());
-    } on Exception catch (e) {
+          
+      print('✅ Investment added successfully to Firestore');
+    } catch (e, stackTrace) {
+      print('❌ Error adding investment to Firestore: $e');
+      print('Stack trace: $stackTrace');
       throw FirestoreException('Error adding investment: $e');
     }
   }
@@ -121,14 +128,49 @@ class FirestoreService {
   }
 
   // Get user investments stream
-  Stream<List<InvestmentModel>> getUserInvestments(String userId) => _firestore
-        .collection(AppConstants.investmentsCollection)
-        .where('userId', isEqualTo: userId)
-        .orderBy('purchaseDate', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map(InvestmentModel.fromDocument)
-            .toList(),);
+  Stream<List<InvestmentModel>> getUserInvestments(String userId) {
+    try {
+      print('🔧 Getting investments stream for user: $userId');
+      
+      if (userId.isEmpty) {
+        print('❌ Empty user ID provided to getUserInvestments');
+        return Stream.value(<InvestmentModel>[]);
+      }
+      
+      return _firestore
+          .collection(AppConstants.investmentsCollection)
+          .where('userId', isEqualTo: userId)
+          .orderBy('purchaseDate', descending: true)
+          .snapshots()
+          .map((snapshot) {
+        print('📊 Firestore returned ${snapshot.docs.length} investment documents');
+        
+        final investments = snapshot.docs.map((doc) {
+          try {
+            print('📄 Processing investment doc: ${doc.id}');
+            print('📄 Doc data: ${doc.data()}');
+            
+            return InvestmentModel.fromDocument(doc);
+          } catch (e, stackTrace) {
+            print('❌ Error parsing investment document ${doc.id}: $e');
+            print('Stack trace: $stackTrace');
+            print('Document data: ${doc.data()}');
+            rethrow;
+          }
+        }).toList();
+        
+        print('✅ Successfully parsed ${investments.length} investments');
+        return investments;
+      }).handleError((Object error, StackTrace stackTrace) {
+        print('❌ Firestore stream error: $error');
+        print('Stack trace: $stackTrace');
+      });
+    } catch (e, stackTrace) {
+      print('❌ getUserInvestments error: $e');
+      print('Stack trace: $stackTrace');
+      return Stream.error(e, stackTrace);
+    }
+  }
 
   // BORROW/LEND CRUD OPERATIONS
 
