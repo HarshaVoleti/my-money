@@ -7,6 +7,7 @@ import 'package:my_money/core/models/transaction_model.dart';
 import 'package:my_money/core/utils/currency_formatter.dart';
 import 'package:my_money/features/bank_accounts/screens/bank_accounts_screen.dart';
 import 'package:my_money/features/deposits/screens/deposits_screen.dart';
+import 'package:my_money/features/deposits/providers/deposit_providers.dart';
 import 'package:my_money/features/home/providers/home_providers.dart';
 import 'package:my_money/features/investments/screens/investments_screen.dart';
 import 'package:my_money/features/settings/screens/settings_screen.dart';
@@ -16,9 +17,8 @@ import 'package:my_money/features/transactions/screens/transactions_screen.dart'
 import 'package:my_money/shared/widgets/dashboard_widgets.dart';
 import 'package:my_money/features/home/screens/all_quick_actions_screen.dart';
 import 'package:my_money/features/analytics/screens/analytics_screen.dart';
-import 'package:my_money/features/analytics/screens/analytics_screen.dart';
 
-import '../../borrow_lend/screens/add_borrow_lend_screen.dart';
+
 import '../../credit_cards/screens/credit_cards_screen.dart';
 
 class MainScreen extends ConsumerWidget {
@@ -231,6 +231,7 @@ class _FinancialOverviewSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardSummaryAsync = ref.watch(dashboardSummaryProvider);
     final borrowLendProvider = ref.watch(borrowLendProviderProvider);
+    final AsyncValue<Map<String, dynamic>> depositStatsAsync = ref.watch(depositStatsProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,135 +243,127 @@ class _FinancialOverviewSection extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
-        dashboardSummaryAsync.when(
-          data: (summary) => Column(
+        // Deposit Summary Cards
+        depositStatsAsync.when(
+          data: (Map<String, dynamic> stats) => Column(
             children: [
-              // Total Balance and Bank Account Balance
               Row(
                 children: [
                   Expanded(
                     child: _OverviewCard(
-                      title: 'Total Balance',
-                      amount: CurrencyFormatter.format(summary.totalBalance),
-                      icon: Icons.account_balance_wallet,
-                      color: summary.totalBalance >= 0 ? Colors.green : Colors.red,
+                      title: 'Deposits Principal',
+                      amount: '₹${(stats['totalPrincipal'] as double).toStringAsFixed(0)}',
+                      icon: Icons.savings,
+                      color: Colors.blue,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _OverviewCard(
-                      title: 'Bank Balance',
-                      amount: CurrencyFormatter.format(summary.bankAccountBalance),
+                      title: 'Deposits Value',
+                      amount: '₹${(stats['totalCurrentValue'] as double).toStringAsFixed(0)}',
                       icon: Icons.account_balance,
-                      color: summary.bankAccountBalance >= 0 ? Colors.green : Colors.red,
+                      color: Colors.purple,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              // Lending & Borrowing Overview
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => const BorrowLendScreen(),
+              Row(
+                children: [
+                  Expanded(
+                    child: _OverviewCard(
+                      title: 'Maturity Value',
+                      amount: '₹${(stats['totalExpectedMaturity'] as double).toStringAsFixed(0)}',
+                      icon: Icons.trending_up,
+                      color: Colors.green,
                     ),
-                  );
-                },
-                child: _OverviewCard(
-                  title: 'Lending & Borrowing',
-                  amount: 'Net: ₹${CurrencyFormatter.format(borrowLendProvider.netPosition)}',
-                  icon: borrowLendProvider.netPosition >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                  color: borrowLendProvider.netPosition >= 0 ? Colors.green : Colors.red,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _OverviewCard(
+                      title: 'Deposit Returns',
+                      amount: '₹${(stats['totalInterest'] as double).toStringAsFixed(0)}',
+                      icon: Icons.show_chart,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Existing Financial Overview Cards
+              dashboardSummaryAsync.when(
+                data: (summary) => Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _OverviewCard(
+                            title: 'Total Balance',
+                            amount: CurrencyFormatter.format(summary.totalBalance),
+                            icon: Icons.account_balance_wallet,
+                            color: summary.totalBalance >= 0 ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _OverviewCard(
+                            title: 'Bank Balance',
+                            amount: CurrencyFormatter.format(summary.bankAccountBalance),
+                            icon: Icons.account_balance,
+                            color: summary.bankAccountBalance >= 0 ? Colors.green : Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Lending & Borrowing Overview
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) => const BorrowLendScreen(),
+                          ),
+                        );
+                      },
+                      child: _OverviewCard(
+                        title: 'Lending & Borrowing',
+                        amount: 'Net: ₹${CurrencyFormatter.format(borrowLendProvider.netPosition)}',
+                        icon: borrowLendProvider.netPosition >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                        color: borrowLendProvider.netPosition >= 0 ? Colors.green : Colors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _OverviewCard(
+                            title: 'Transactions',
+                            amount: CurrencyFormatter.formatWithSign(summary.transactionBalance),
+                            icon: summary.transactionBalance >= 0 ? Icons.trending_up : Icons.trending_down,
+                            color: summary.transactionBalance >= 0 ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _OverviewCard(
+                            title: 'This Month',
+                            amount: CurrencyFormatter.formatWithSign(summary.monthlyIncome - summary.monthlyExpense),
+                            icon: (summary.monthlyIncome - summary.monthlyExpense) >= 0 ? Icons.trending_up : Icons.trending_down,
+                            color: (summary.monthlyIncome - summary.monthlyExpense) >= 0 ? Colors.green : Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              // Transaction Balance and Monthly Income
-              Row(
-                children: [
-                  Expanded(
-                    child: _OverviewCard(
-                      title: 'Transactions',
-                      amount: CurrencyFormatter.formatWithSign(summary.transactionBalance),
-                      icon: summary.transactionBalance >= 0 ? Icons.trending_up : Icons.trending_down,
-                      color: summary.transactionBalance >= 0 ? Colors.green : Colors.red,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _OverviewCard(
-                      title: 'This Month',
-                      amount: CurrencyFormatter.formatWithSign(summary.monthlyIncome - summary.monthlyExpense),
-                      icon: (summary.monthlyIncome - summary.monthlyExpense) >= 0 ? Icons.trending_up : Icons.trending_down,
-                      color: (summary.monthlyIncome - summary.monthlyExpense) >= 0 ? Colors.green : Colors.red,
-                    ),
-                  ),
-                ],
+                loading: () => const SizedBox(height: 80, child: Center(child: CircularProgressIndicator())),
+                error: (error, stack) => const SizedBox.shrink(),
               ),
             ],
           ),
-          loading: () => const Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(child: DashboardLoadingCard(title: 'Total Balance')),
-                  SizedBox(width: 12),
-                  Expanded(child: DashboardLoadingCard(title: 'Bank Balance')),
-                ],
-              ),
-              SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: DashboardLoadingCard(title: 'Transactions')),
-                  SizedBox(width: 12),
-                  Expanded(child: DashboardLoadingCard(title: 'This Month')),
-                ],
-              ),
-            ],
-          ),
-          error: (error, stack) => Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: DashboardErrorCard(
-                      title: 'Total Balance',
-                      error: error.toString(),
-                      onRetry: () => ref.invalidate(dashboardSummaryProvider),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DashboardErrorCard(
-                      title: 'Bank Balance',
-                      error: error.toString(),
-                      onRetry: () => ref.invalidate(dashboardSummaryProvider),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: DashboardErrorCard(
-                      title: 'Transactions',
-                      error: error.toString(),
-                      onRetry: () => ref.invalidate(dashboardSummaryProvider),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DashboardErrorCard(
-                      title: 'This Month',
-                      error: error.toString(),
-                      onRetry: () => ref.invalidate(dashboardSummaryProvider),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          loading: () => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
+          error: (_, __) => const SizedBox.shrink(),
         ),
       ],
     );

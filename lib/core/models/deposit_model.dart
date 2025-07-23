@@ -1,3 +1,4 @@
+  /// Returns the current value of the deposit as of today (not at maturity
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,7 +11,6 @@ class DepositModel {
   final String description;
   final DepositType type;
   final double principalAmount;
-  final double currentValue;
   final double interestRate;
   final DateTime startDate;
   final DateTime maturityDate;
@@ -28,12 +28,12 @@ class DepositModel {
   final DateTime updatedAt;
 
   const DepositModel({
+  /// Returns the current value of the deposit as of today (not at maturity)
     required this.id,
     required this.name,
     required this.description,
     required this.type,
     required this.principalAmount,
-    required this.currentValue,
     required this.interestRate,
     required this.startDate,
     required this.maturityDate,
@@ -51,6 +51,47 @@ class DepositModel {
     required this.updatedAt,
   });
 
+  double get currentValue {
+    final now = DateTime.now();
+
+// If already matured, return maturity value
+    if (now.isAfter(maturityDate)) return expectedMaturityAmount;
+
+    if (type == DepositType.recurringDeposit &&
+        monthlyInstallment != null &&
+        tenureMonths != null) {
+      final P = monthlyInstallment!;
+      final r = interestRate;
+      final n = tenureMonths!;
+      final totalMonths =
+          ((now.year - startDate.year) * 12 + now.month - startDate.month);
+
+// Number of installments paid till now (max capped at tenure)
+      final paidInstallments = totalMonths.clamp(0, n);
+
+      double total = 0.0;
+      for (int i = 0; i < paidInstallments; i++) {
+        // Each installment i was deposited at (startDate + i months)
+        final installmentDate =
+            DateTime(startDate.year, startDate.month + i, startDate.day);
+        final monthsLeft = ((maturityDate.year - installmentDate.year) * 12 +
+            maturityDate.month -
+            installmentDate.month);
+
+        final interest = P * monthsLeft * (r / 12) * 0.01;
+        total += P + interest;
+      }
+
+      return total;
+    } else {
+// For FD: compound interest as of today
+      final P = principalAmount;
+      final r = interestRate / 100;
+      final t = now.difference(startDate).inDays / 365.25;
+      return P * pow(1 + r, t);
+    }
+  }
+
   double get expectedMaturityAmount {
     if (type == DepositType.recurringDeposit && monthlyInstallment != null && tenureMonths != null) {
       // Simple RD maturity calculation: M = P * [(1 + r/4)^(4*n) - 1] / (1/4)
@@ -60,11 +101,12 @@ class DepositModel {
           (1 + (tenureMonths! + 1) * monthlyRate / 24);
       return amount;
     } else {
-      // Simple compound interest for FD
-    final P = principalAmount;
-    final r = interestRate / 100;
-    final t = maturityDate.difference(startDate).inDays / 365.25;
-    return P * pow(1 + r, t);
+// FD with compound interest:
+      final n = 4;
+      final P = principalAmount;
+      final r = interestRate / 100;
+      final t = maturityDate.difference(startDate).inDays / 365.25;
+      return P * pow(1 + r / n, n * t);
     }
   }
 
@@ -81,7 +123,6 @@ class DepositModel {
       'description': description,
       'type': type.name,
       'principalAmount': principalAmount,
-      'currentValue': currentValue,
       'interestRate': interestRate,
       'startDate': startDate.toIso8601String(),
       'maturityDate': maturityDate.toIso8601String(),
@@ -111,7 +152,6 @@ class DepositModel {
         orElse: () => DepositType.fixedDeposit,
       ),
       principalAmount: (data['principalAmount'] as num?)?.toDouble() ?? 0.0,
-      currentValue: (data['currentValue'] as num?)?.toDouble() ?? 0.0,
       interestRate: (data['interestRate'] as num?)?.toDouble() ?? 0.0,
       startDate: DateTime.parse(
         data['startDate']?.toString() ?? DateTime.now().toIso8601String(),
@@ -150,7 +190,6 @@ class DepositModel {
     String? description,
     DepositType? type,
     double? principalAmount,
-    double? currentValue,
     double? interestRate,
     DateTime? startDate,
     DateTime? maturityDate,
@@ -173,7 +212,6 @@ class DepositModel {
       description: description ?? this.description,
       type: type ?? this.type,
       principalAmount: principalAmount ?? this.principalAmount,
-      currentValue: currentValue ?? this.currentValue,
       interestRate: interestRate ?? this.interestRate,
       startDate: startDate ?? this.startDate,
       maturityDate: maturityDate ?? this.maturityDate,

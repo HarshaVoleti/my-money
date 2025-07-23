@@ -294,7 +294,7 @@ class _DepositCard extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '₹${deposit.principalAmount.toStringAsFixed(0)}',
+              '₹${deposit.currentValue.toStringAsFixed(0)}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

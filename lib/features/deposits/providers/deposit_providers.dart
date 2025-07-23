@@ -102,19 +102,16 @@ class DepositNotifier extends AsyncNotifier<List<DepositModel>> {
   Future<void> updateCurrentValue(String depositId, double currentValue) async {
     try {
       await _depositService.updateCurrentValue(depositId, currentValue);
-      
       // Update the current state
       final currentDeposits = state.value ?? [];
       final updatedDeposits = currentDeposits.map((deposit) {
         if (deposit.id == depositId) {
           return deposit.copyWith(
-            currentValue: currentValue,
             updatedAt: DateTime.now(),
           );
         }
         return deposit;
       }).toList();
-      
       state = AsyncValue.data(updatedDeposits);
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);

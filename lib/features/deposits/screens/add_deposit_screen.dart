@@ -25,7 +25,9 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
   final _principalController = TextEditingController();
   final _rateController = TextEditingController();
   final _tenureController = TextEditingController();
+  final _installmentController = TextEditingController();
   String _tenureType = 'Months'; // or 'Days'
+  String _recurringFrequency = 'Monthly';
   // final _bankController = TextEditingController();
 
   DepositType _selectedType = DepositType.fixedDeposit;
@@ -48,6 +50,10 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
     _nameController.text = deposit.name;
     _descriptionController.text = deposit.description;
     _principalController.text = deposit.principalAmount.toString();
+    if (deposit.type == DepositType.recurringDeposit && deposit.monthlyInstallment != null) {
+      _installmentController.text = deposit.monthlyInstallment.toString();
+      _recurringFrequency = 'Monthly'; // Only monthly supported for now
+    }
     _rateController.text = deposit.interestRate.toString();
     if (deposit.tenureMonths != null) {
       _tenureController.text = deposit.tenureMonths.toString();
@@ -73,6 +79,7 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
     _principalController.dispose();
     _rateController.dispose();
     _tenureController.dispose();
+    _installmentController.dispose();
     super.dispose();
   }
 
@@ -185,22 +192,90 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 16),
-                      CustomTextField(
-                        controller: _principalController,
-                        labelText: 'Principal Amount',
-                        hintText: '50000',
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter principal amount';
-                          }
-                          if (double.tryParse(value) == null || double.parse(value) <= 0) {
-                            return 'Please enter valid amount';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                      if (_selectedType == DepositType.fixedDeposit) ...[
+                        CustomTextField(
+                          controller: _principalController,
+                          labelText: 'Principal Amount',
+                          hintText: '50000',
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter principal amount';
+                            }
+                            if (double.tryParse(value) == null || double.parse(value) <= 0) {
+                              return 'Please enter valid amount';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (_selectedType == DepositType.recurringDeposit) ...[
+                        CustomTextField(
+                          controller: _installmentController,
+                          labelText: 'Installment Amount',
+                          hintText: 'e.g. 2000',
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter installment amount';
+                            }
+                            if (double.tryParse(value) == null || double.parse(value) <= 0) {
+                              return 'Please enter valid amount';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: CustomTextField(
+                                controller: _tenureController,
+                                labelText: 'Tenure',
+                                hintText: _tenureType == 'Months' ? '12' : '90',
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please enter tenure';
+                                  }
+                                  if (int.tryParse(value) == null || int.parse(value) <= 0) {
+                                    return 'Please enter valid tenure';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            DropdownButton<String>(
+                              value: _tenureType,
+                              items: const [
+                                DropdownMenuItem(value: 'Months', child: Text('Months')),
+                                DropdownMenuItem(value: 'Days', child: Text('Days')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) setState(() => _tenureType = val);
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            const Text('Recurring Frequency:'),
+                            const SizedBox(width: 8),
+                            DropdownButton<String>(
+                              value: _recurringFrequency,
+                              items: const [
+                                DropdownMenuItem(value: 'Monthly', child: Text('Monthly')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) setState(() => _recurringFrequency = val);
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
                       CustomTextField(
                         controller: _rateController,
                         labelText: 'Interest Rate (%)',
@@ -216,39 +291,41 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextField(
-                              controller: _tenureController,
-                              labelText: 'Tenure',
-                              hintText: _tenureType == 'Months' ? '12' : '90',
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter tenure';
-                                }
-                                if (int.tryParse(value) == null || int.parse(value) <= 0) {
-                                  return 'Please enter valid tenure';
-                                }
-                                return null;
+                      if (_selectedType == DepositType.fixedDeposit)
+                        const SizedBox(height: 16),
+                      if (_selectedType == DepositType.fixedDeposit)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: CustomTextField(
+                                controller: _tenureController,
+                                labelText: 'Tenure',
+                                hintText: _tenureType == 'Months' ? '12' : '90',
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please enter tenure';
+                                  }
+                                  if (int.tryParse(value) == null || int.parse(value) <= 0) {
+                                    return 'Please enter valid tenure';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            DropdownButton<String>(
+                              value: _tenureType,
+                              items: const [
+                                DropdownMenuItem(value: 'Months', child: Text('Months')),
+                                DropdownMenuItem(value: 'Days', child: Text('Days')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) setState(() => _tenureType = val);
                               },
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          DropdownButton<String>(
-                            value: _tenureType,
-                            items: const [
-                              DropdownMenuItem(value: 'Months', child: Text('Months')),
-                              DropdownMenuItem(value: 'Days', child: Text('Days')),
-                            ],
-                            onChanged: (val) {
-                              if (val != null) setState(() => _tenureType = val);
-                            },
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
@@ -376,7 +453,12 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
         final updatedDeposit = widget.deposit!.copyWith(
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
-          principalAmount: double.parse(_principalController.text),
+          principalAmount: _selectedType == DepositType.fixedDeposit
+              ? double.parse(_principalController.text)
+              : 0.0,
+          monthlyInstallment: _selectedType == DepositType.recurringDeposit
+              ? double.parse(_installmentController.text)
+              : null,
           interestRate: double.parse(_rateController.text),
           tenureMonths: _tenureType == 'Months' ? int.tryParse(_tenureController.text) : null,
           tenureDays: _tenureType == 'Days' ? int.tryParse(_tenureController.text) : null,
@@ -399,7 +481,12 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim(),
           type: _selectedType,
-          principalAmount: double.parse(_principalController.text),
+          principalAmount: _selectedType == DepositType.fixedDeposit
+              ? double.parse(_principalController.text)
+              : 0.0,
+          monthlyInstallment: _selectedType == DepositType.recurringDeposit
+              ? double.parse(_installmentController.text)
+              : null,
           interestRate: double.parse(_rateController.text),
           startDate: _startDate,
           maturityDate: _calculateMaturityDate(),

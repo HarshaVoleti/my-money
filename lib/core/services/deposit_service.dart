@@ -33,7 +33,6 @@ class DepositService {
         description: description,
         type: type,
         principalAmount: principalAmount,
-        currentValue: principalAmount,
         interestRate: interestRate,
         startDate: startDate,
         maturityDate: maturityDate,
