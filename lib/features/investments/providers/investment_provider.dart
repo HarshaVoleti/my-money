@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:my_money/core/models/investment_model.dart';
+import 'package:my_money/core/models/investment_position.dart';
 import 'package:my_money/core/services/firestore_service.dart';
 import 'package:my_money/core/utils/investment_calculator.dart';
 import 'package:my_money/core/enums/investment_enums.dart';
@@ -42,6 +43,31 @@ class InvestmentProvider extends ChangeNotifier {
 
   List<InvestmentModel> get watchlistInvestments =>
       _investments.where((inv) => inv.status == InvestmentStatus.watchlist).toList();
+
+  /// Group investments by symbol to create positions
+  List<InvestmentPosition> get positions {
+    final Map<String, List<InvestmentModel>> groupedOrders = {};
+    
+    // Group active investments by symbol
+    for (final investment in activeInvestments) {
+      final symbol = investment.symbol ?? investment.name;
+      groupedOrders.putIfAbsent(symbol, () => []).add(investment);
+    }
+    
+    // Create positions from grouped orders
+    return groupedOrders.values
+        .map((orders) => InvestmentPosition.fromOrders(orders))
+        .toList()
+        ..sort((a, b) => b.currentValue.compareTo(a.currentValue)); // Sort by value desc
+  }
+
+  /// Get individual orders for a specific symbol
+  List<InvestmentModel> getOrdersForSymbol(String symbol) {
+    return activeInvestments
+        .where((inv) => (inv.symbol ?? inv.name) == symbol)
+        .toList()
+        ..sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate)); // Latest first
+  }
 
   // Portfolio calculations
   double get totalInvestment =>

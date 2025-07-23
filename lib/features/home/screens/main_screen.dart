@@ -1,3 +1,5 @@
+import 'package:my_money/features/borrow_lend/screens/borrow_lend_screen.dart';
+import 'package:my_money/features/borrow_lend/providers/borrow_lend_riverpod_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_money/core/enums/label_enums.dart';
@@ -9,15 +11,20 @@ import 'package:my_money/features/home/providers/home_providers.dart';
 import 'package:my_money/features/investments/screens/investments_screen.dart';
 import 'package:my_money/features/settings/screens/settings_screen.dart';
 import 'package:my_money/features/transactions/screens/add_income_screen.dart';
+import 'package:my_money/features/transactions/screens/add_expense_screen.dart';
 import 'package:my_money/features/transactions/screens/transactions_screen.dart';
 import 'package:my_money/shared/widgets/dashboard_widgets.dart';
+import 'package:my_money/features/home/screens/all_quick_actions_screen.dart';
+import 'package:my_money/features/analytics/screens/analytics_screen.dart';
+import 'package:my_money/features/analytics/screens/analytics_screen.dart';
+
+import '../../borrow_lend/screens/add_borrow_lend_screen.dart';
 
 class MainScreen extends ConsumerWidget {
   const MainScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
+  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
       appBar: AppBar(
         title: const Text('My Money'),
         centerTitle: true,
@@ -134,7 +141,35 @@ class MainScreen extends ConsumerWidget {
               title: const Text('Analytics'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Navigate to analytics
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const AnalyticsScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.compare_arrows),
+              title: const Text('Lending & Borrowing'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const BorrowLendScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.add_card),
+              title: const Text('Add Borrow/Lend'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const AddBorrowLendScreen(),
+                  ),
+                );
               },
             ),
             const Divider(),
@@ -154,24 +189,24 @@ class MainScreen extends ConsumerWidget {
         ),
       ),
       body: const SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Financial Overview Cards
-            _FinancialOverviewSection(),
-            SizedBox(height: 24),
-            
             // Quick Actions
             _QuickActionsSection(),
             SizedBox(height: 24),
+
+            // Financial Overview Cards
+            _FinancialOverviewSection(),
+            SizedBox(height: 24),
+                        
+            // Investment Summary
+            _InvestmentSummarySection(),
             
             // Recent Transactions
             _RecentTransactionsSection(),
             SizedBox(height: 24),
-            
-            // Investment Summary
-            _InvestmentSummarySection(),
           ],
         ),
       ),
@@ -186,7 +221,6 @@ class MainScreen extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
     );
-  }
 }
 
 class _FinancialOverviewSection extends ConsumerWidget {
@@ -195,6 +229,7 @@ class _FinancialOverviewSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardSummaryAsync = ref.watch(dashboardSummaryProvider);
+    final borrowLendProvider = ref.watch(borrowLendProviderProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,6 +265,23 @@ class _FinancialOverviewSection extends ConsumerWidget {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              // Lending & Borrowing Overview
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => const BorrowLendScreen(),
+                    ),
+                  );
+                },
+                child: _OverviewCard(
+                  title: 'Lending & Borrowing',
+                  amount: 'Net: ₹${CurrencyFormatter.format(borrowLendProvider.netPosition)}',
+                  icon: borrowLendProvider.netPosition >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                  color: borrowLendProvider.netPosition >= 0 ? Colors.green : Colors.red,
+                ),
               ),
               const SizedBox(height: 12),
               // Transaction Balance and Monthly Income
@@ -338,10 +390,9 @@ class _OverviewCard extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
+  Widget build(BuildContext context) => Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -370,15 +421,13 @@ class _OverviewCard extends StatelessWidget {
         ),
       ),
     );
-  }
 }
 
 class _QuickActionsSection extends StatelessWidget {
   const _QuickActionsSection();
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
+  Widget build(BuildContext context) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -408,7 +457,11 @@ class _QuickActionsSection extends StatelessWidget {
               label: 'Add Expense',
               color: Colors.red,
               onTap: () {
-                // TODO: Navigate to add expense
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const AddExpenseScreen(),
+                  ),
+                );
               },
             ),
             _QuickActionButton(
@@ -424,13 +477,13 @@ class _QuickActionsSection extends StatelessWidget {
               },
             ),
             _QuickActionButton(
-              icon: Icons.receipt_long,
+              icon: Icons.apps,
               label: 'View All',
               color: Colors.grey,
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (context) => const TransactionsScreen(),
+                    builder: (context) => const AllQuickActionsScreen(),
                   ),
                 );
               },
@@ -439,7 +492,6 @@ class _QuickActionsSection extends StatelessWidget {
         ),
       ],
     );
-  }
 }
 
 class _QuickActionButton extends StatelessWidget {
@@ -456,8 +508,7 @@ class _QuickActionButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return InkWell(
+  Widget build(BuildContext context) => InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -482,7 +533,6 @@ class _QuickActionButton extends StatelessWidget {
         ),
       ),
     );
-  }
 }
 
 class _RecentTransactionsSection extends ConsumerWidget {
@@ -578,10 +628,10 @@ class _InvestmentSummarySection extends ConsumerWidget {
           data: (investments) {
             // Calculate investment summary
             final totalInvestment = investments.fold<double>(
-              0.0, (sum, inv) => sum + inv.totalInvestment,
+              0, (sum, inv) => sum + inv.totalInvestment,
             );
             final currentValue = investments.fold<double>(
-              0.0, (sum, inv) => sum + inv.currentValue,
+              0, (sum, inv) => sum + inv.currentValue,
             );
             final profitLoss = currentValue - totalInvestment;
             final profitLossPercentage = totalInvestment > 0 ? (profitLoss / totalInvestment) * 100 : 0.0;
@@ -604,7 +654,7 @@ class _InvestmentSummarySection extends ConsumerWidget {
 
             return Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     Container(
@@ -749,10 +799,9 @@ class _TransactionPlaceholder extends StatelessWidget {
   const _TransactionPlaceholder();
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
+  Widget build(BuildContext context) => Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             const Icon(
@@ -778,5 +827,4 @@ class _TransactionPlaceholder extends StatelessWidget {
         ),
       ),
     );
-  }
 }

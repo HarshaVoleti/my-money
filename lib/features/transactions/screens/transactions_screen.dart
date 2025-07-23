@@ -4,6 +4,7 @@ import 'package:my_money/core/enums/label_enums.dart';
 import 'package:my_money/core/models/transaction_model.dart';
 import 'package:my_money/core/utils/currency_formatter.dart';
 import 'package:my_money/features/transactions/screens/add_income_screen.dart';
+import 'package:my_money/features/transactions/screens/add_expense_screen.dart';
 import 'package:my_money/features/transactions/providers/transaction_provider.dart';
 import 'package:my_money/features/home/providers/home_providers.dart';
 
@@ -655,9 +656,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
               subtitle: const Text('Bills, shopping, food'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Navigate to AddExpenseScreen when created
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Add Expense screen coming soon!')),
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const AddExpenseScreen(),
+                  ),
                 );
               },
             ),

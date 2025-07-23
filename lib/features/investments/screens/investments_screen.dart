@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_money/core/models/investment_model.dart';
+import 'package:my_money/core/models/investment_position.dart';
 import 'package:my_money/features/investments/providers/investment_riverpod_providers.dart';
 import 'package:my_money/features/investments/providers/investment_provider.dart';
 import 'package:my_money/features/investments/screens/add_investment_screen.dart';
@@ -21,6 +22,7 @@ class InvestmentsScreen extends ConsumerWidget {
     print('  - Loading: ${investmentProvider.isLoading}');
     print('  - Error: ${investmentProvider.error}');
     print('  - Investments count: ${investmentProvider.investments.length}');
+    print('  - Positions count: ${investmentProvider.positions.length}');
     
     return Scaffold(
       appBar: AppBar(
@@ -263,72 +265,286 @@ class InvestmentsScreen extends ConsumerWidget {
       );
     }
     
-    if (investmentProvider.investments.isEmpty == true) {
+    if (investmentProvider.positions.isEmpty == true) {
       print('🔧 Showing empty state');
       return const Center(
         child: Text('No investments found'),
       );
     }
 
-    print('🔧 Showing investments list with ${investmentProvider.investments.length} items');
+    print('🔧 Showing positions list with ${investmentProvider.positions.length} positions');
     return ListView(
-      children: investmentProvider.investments.map<Widget>((InvestmentModel investment) {
-        print('🔧 Rendering investment: ${investment.name}');
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: investment.profitLoss >= 0 ? Colors.green : Colors.red,
-              child: Text(
-                investment.name.substring(0, 1).toUpperCase(),
-                style: const TextStyle(color: Colors.white),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: investmentProvider.positions.map<Widget>((InvestmentPosition position) {
+        print('🔧 Rendering position: ${position.symbol} (${position.orderCount} orders)');
+        return _buildPositionExpansionTile(context, position, investmentProvider);
+      }).toList(),
+    );
+  }
+
+  Widget _buildPositionExpansionTile(BuildContext context, InvestmentPosition position, InvestmentProvider investmentProvider) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ExpansionTile(
+        leading: CircleAvatar(
+          backgroundColor: position.isProfit ? Colors.green : Colors.red,
+          child: Text(
+            position.symbol.substring(0, 1).toUpperCase(),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    position.symbol,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    position.name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
               ),
             ),
-            title: Text(investment.name),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${investment.quantity} units @ ${CurrencyFormatter.format(investment.purchasePrice)}'),
-                Text(
-                  investment.type.displayName,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            trailing: Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  CurrencyFormatter.format(investment.currentValue),
+                  CurrencyFormatter.format(position.currentValue),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 Text(
-                  '${investment.profitLoss >= 0 ? '+' : ''}${CurrencyFormatter.format(investment.profitLoss)}',
+                  '${position.profitLoss >= 0 ? '+' : ''}${CurrencyFormatter.format(position.profitLoss)}',
                   style: TextStyle(
-                    color: investment.profitLoss >= 0 ? Colors.green : Colors.red,
+                    color: position.isProfit ? Colors.green : Colors.red,
                     fontSize: 12,
                   ),
                 ),
               ],
             ),
+          ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${position.totalQuantity} units @ ₹${position.averagePrice.toStringAsFixed(2)} avg',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    Text(
+                      '${position.orderCount} order(s) • Current: ₹${position.currentPrice.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _showEditCurrentPriceDialog(context, position),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(
+                    Icons.edit,
+                    size: 16,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Orders History',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...position.orders.map((order) => _buildOrderTile(context, order)),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) => AddInvestmentScreen(
+                              investment: position.orders.first.copyWith(
+                                symbol: position.symbol,
+                                currentPrice: position.currentPrice,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Add Order'),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _showEditCurrentPriceDialog(context, position),
+                      icon: const Icon(Icons.trending_up, size: 16),
+                      label: const Text('Update Price'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderTile(BuildContext context, InvestmentModel order) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${order.quantity} units @ ₹${order.purchasePrice.toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  '${order.purchaseDate.day}/${order.purchaseDate.month}/${order.purchaseDate.year} • ${order.platform}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                CurrencyFormatter.format(order.totalInvestment),
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              Text(
+                'Invested',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
             onTap: () {
-              print('🔧 Investment tapped: ${investment.name}');
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (context) => AddInvestmentScreen(investment: investment),
+                  builder: (context) => AddInvestmentScreen(investment: order),
                 ),
               );
             },
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.edit,
+                size: 16,
+                color: Colors.grey[600],
+              ),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditCurrentPriceDialog(BuildContext context, InvestmentPosition position) {
+    final TextEditingController priceController = TextEditingController(
+      text: position.currentPrice.toStringAsFixed(2),
+    );
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Update Current Price for ${position.symbol}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'This will update the current price for all ${position.orderCount} order(s) of ${position.symbol}',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: priceController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Current Price',
+                  prefixText: '₹',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newPrice = double.tryParse(priceController.text);
+                if (newPrice != null && newPrice > 0) {
+                  // TODO: Implement current price update
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Current price updated to ₹${newPrice.toStringAsFixed(2)}'),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Update'),
+            ),
+          ],
         );
-      }).toList(),
+      },
     );
   }
 

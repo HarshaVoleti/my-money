@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:my_money/core/enums/investment_enums.dart';
 import 'package:my_money/core/enums/label_enums.dart';
@@ -13,6 +15,7 @@ class DepositModel {
   final DateTime startDate;
   final DateTime maturityDate;
   final int? tenureMonths;
+  final int? tenureDays;
   final double? monthlyInstallment; // For RD
   final String bankName;
   final String? accountNumber;
@@ -35,6 +38,7 @@ class DepositModel {
     required this.startDate,
     required this.maturityDate,
     this.tenureMonths,
+    this.tenureDays,
     this.monthlyInstallment,
     required this.bankName,
     this.accountNumber,
@@ -57,8 +61,10 @@ class DepositModel {
       return amount;
     } else {
       // Simple compound interest for FD
-      final years = maturityDate.difference(startDate).inDays / 365.25;
-      return principalAmount * (1 + interestRate / 100) * years;
+    final P = principalAmount;
+    final r = interestRate / 100;
+    final t = maturityDate.difference(startDate).inDays / 365.25;
+    return P * pow(1 + r, t);
     }
   }
 
@@ -80,6 +86,7 @@ class DepositModel {
       'startDate': startDate.toIso8601String(),
       'maturityDate': maturityDate.toIso8601String(),
       'tenureMonths': tenureMonths,
+      'tenureDays': tenureDays,
       'monthlyInstallment': monthlyInstallment,
       'bankName': bankName,
       'accountNumber': accountNumber,
@@ -113,6 +120,7 @@ class DepositModel {
         data['maturityDate']?.toString() ?? DateTime.now().toIso8601String(),
       ),
       tenureMonths: (data['tenureMonths'] as num?)?.toInt(),
+      tenureDays: (data['tenureDays'] as num?)?.toInt(),
       monthlyInstallment: (data['monthlyInstallment'] as num?)?.toDouble(),
       bankName: data['bankName']?.toString() ?? '',
       accountNumber: data['accountNumber']?.toString(),
@@ -147,6 +155,7 @@ class DepositModel {
     DateTime? startDate,
     DateTime? maturityDate,
     int? tenureMonths,
+    int? tenureDays,
     double? monthlyInstallment,
     String? bankName,
     String? accountNumber,
@@ -169,6 +178,7 @@ class DepositModel {
       startDate: startDate ?? this.startDate,
       maturityDate: maturityDate ?? this.maturityDate,
       tenureMonths: tenureMonths ?? this.tenureMonths,
+      tenureDays: tenureDays ?? this.tenureDays,
       monthlyInstallment: monthlyInstallment ?? this.monthlyInstallment,
       bankName: bankName ?? this.bankName,
       accountNumber: accountNumber ?? this.accountNumber,

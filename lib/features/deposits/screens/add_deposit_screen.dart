@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_money/core/models/deposit_model.dart';
 import 'package:my_money/core/enums/investment_enums.dart';
 import 'package:my_money/features/deposits/providers/deposit_providers.dart';
+
 import 'package:my_money/shared/widgets/custom_text_field.dart';
 import 'package:my_money/shared/widgets/custom_button.dart';
+import 'package:my_money/core/models/bank_account_model.dart';
+import 'package:my_money/features/transactions/widgets/bank_account_selector.dart';
 
 class AddDepositScreen extends ConsumerStatefulWidget {
   const AddDepositScreen({super.key, this.deposit});
@@ -22,11 +25,13 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
   final _principalController = TextEditingController();
   final _rateController = TextEditingController();
   final _tenureController = TextEditingController();
-  final _bankController = TextEditingController();
+  String _tenureType = 'Months'; // or 'Days'
+  // final _bankController = TextEditingController();
 
   DepositType _selectedType = DepositType.fixedDeposit;
   DateTime _startDate = DateTime.now();
   bool _isAutoRenew = false;
+  BankAccountModel? _selectedBankAccount;
 
   bool get _isEditing => widget.deposit != null;
 
@@ -44,11 +49,21 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
     _descriptionController.text = deposit.description;
     _principalController.text = deposit.principalAmount.toString();
     _rateController.text = deposit.interestRate.toString();
-    _tenureController.text = deposit.tenureMonths?.toString() ?? '';
-    _bankController.text = deposit.bankName;
+    if (deposit.tenureMonths != null) {
+      _tenureController.text = deposit.tenureMonths.toString();
+      _tenureType = 'Months';
+    } else if (deposit.tenureDays != null) {
+      _tenureController.text = deposit.tenureDays.toString();
+      _tenureType = 'Days';
+    } else {
+      _tenureController.text = '';
+      _tenureType = 'Months';
+    }
+    // _bankController.text = deposit.bankName;
     _selectedType = deposit.type;
     _startDate = deposit.startDate;
     _isAutoRenew = deposit.autoRenewal;
+    // Note: _selectedBankAccount cannot be set from deposit.bankName directly
   }
 
   @override
@@ -58,13 +73,11 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
     _principalController.dispose();
     _rateController.dispose();
     _tenureController.dispose();
-    _bankController.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Deposit' : 'Add Deposit'),
         centerTitle: true,
@@ -137,16 +150,15 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      CustomTextField(
-                        controller: _bankController,
-                        labelText: 'Bank/Institution',
-                        hintText: 'e.g., State Bank of India',
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter bank name';
-                          }
-                          return null;
+                      BankAccountSelector(
+                        label: 'Bank Account *',
+                        selectedAccountId: _selectedBankAccount?.id,
+                        onAccountSelected: (account) {
+                          setState(() {
+                            _selectedBankAccount = account;
+                          });
                         },
+                        isRequired: true,
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
@@ -177,7 +189,7 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
                         controller: _principalController,
                         labelText: 'Principal Amount',
                         hintText: '50000',
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter principal amount';
@@ -193,7 +205,7 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
                         controller: _rateController,
                         labelText: 'Interest Rate (%)',
                         hintText: '7.5',
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter interest rate';
@@ -205,20 +217,37 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      CustomTextField(
-                        controller: _tenureController,
-                        labelText: 'Tenure (Months)',
-                        hintText: '12',
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter tenure';
-                          }
-                          if (int.tryParse(value) == null || int.parse(value) <= 0) {
-                            return 'Please enter valid tenure';
-                          }
-                          return null;
-                        },
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CustomTextField(
+                              controller: _tenureController,
+                              labelText: 'Tenure',
+                              hintText: _tenureType == 'Months' ? '12' : '90',
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter tenure';
+                                }
+                                if (int.tryParse(value) == null || int.parse(value) <= 0) {
+                                  return 'Please enter valid tenure';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          DropdownButton<String>(
+                            value: _tenureType,
+                            items: const [
+                              DropdownMenuItem(value: 'Months', child: Text('Months')),
+                              DropdownMenuItem(value: 'Days', child: Text('Days')),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) setState(() => _tenureType = val);
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -293,7 +322,6 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
         ),
       ),
     );
-  }
 
   String _getDepositTypeName(DepositType type) {
     switch (type) {
@@ -316,13 +344,16 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
 
   DateTime _calculateMaturityDate() {
     if (_tenureController.text.isEmpty) return _startDate.add(const Duration(days: 365));
-    
-    final months = int.tryParse(_tenureController.text) ?? 12;
-    return DateTime(
-      _startDate.year,
-      _startDate.month + months,
-      _startDate.day,
-    );
+    final tenure = int.tryParse(_tenureController.text) ?? 12;
+    if (_tenureType == 'Days') {
+      return _startDate.add(Duration(days: tenure));
+    } else {
+      return DateTime(
+        _startDate.year,
+        _startDate.month + tenure,
+        _startDate.day,
+      );
+    }
   }
 
   void _saveDeposit() async {
@@ -332,6 +363,13 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
 
     final depositNotifier = ref.read(depositNotifierProvider.notifier);
 
+    if (_selectedBankAccount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a bank account'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     try {
       if (_isEditing) {
         // Update existing deposit
@@ -340,16 +378,15 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
           description: _descriptionController.text.trim(),
           principalAmount: double.parse(_principalController.text),
           interestRate: double.parse(_rateController.text),
-          tenureMonths: int.tryParse(_tenureController.text),
-          bankName: _bankController.text.trim(),
+          tenureMonths: _tenureType == 'Months' ? int.tryParse(_tenureController.text) : null,
+          tenureDays: _tenureType == 'Days' ? int.tryParse(_tenureController.text) : null,
+          bankName: _selectedBankAccount!.bankName,
           type: _selectedType,
           startDate: _startDate,
           maturityDate: _calculateMaturityDate(),
           autoRenewal: _isAutoRenew,
         );
-        
         await depositNotifier.updateDeposit(updatedDeposit);
-        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Deposit updated successfully!')),
@@ -366,11 +403,11 @@ class _AddDepositScreenState extends ConsumerState<AddDepositScreen> {
           interestRate: double.parse(_rateController.text),
           startDate: _startDate,
           maturityDate: _calculateMaturityDate(),
-          bankName: _bankController.text.trim(),
-          tenureMonths: int.tryParse(_tenureController.text),
+          bankName: _selectedBankAccount!.bankName,
+          tenureMonths: _tenureType == 'Months' ? int.tryParse(_tenureController.text) : null,
+          tenureDays: _tenureType == 'Days' ? int.tryParse(_tenureController.text) : null,
           autoRenewal: _isAutoRenew,
         );
-        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Deposit created successfully!')),

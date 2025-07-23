@@ -83,12 +83,10 @@ class BankAccountSelector extends ConsumerWidget {
                           return null;
                         }
                       : null,
-                  items: activeAccounts.map((account) {
-                    return DropdownMenuItem<String>(
+                  items: activeAccounts.map((account) => DropdownMenuItem<String>(
                       value: account.id,
                       child: _AccountDropdownItem(account: account),
-                    );
-                  }).toList(),
+                    )).toList(),
                   onChanged: (accountId) {
                     final account = accountId != null
                         ? activeAccounts.firstWhere((a) => a.id == accountId)
@@ -191,8 +189,7 @@ class _EmptyState extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
+  Widget build(BuildContext context) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label.isNotEmpty) ...[
@@ -253,7 +250,6 @@ class _EmptyState extends StatelessWidget {
         ),
       ],
     );
-  }
 }
 
 class _AccountDropdownItem extends StatelessWidget {
@@ -262,8 +258,8 @@ class _AccountDropdownItem extends StatelessWidget {
   final BankAccountModel account;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
+  Widget build(BuildContext context) => Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 32,
@@ -279,7 +275,7 @@ class _AccountDropdownItem extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Expanded(
+        SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -316,12 +312,12 @@ class _AccountDropdownItem extends StatelessWidget {
                   ],
                 ],
               ),
-              Text(
-                account.bankName,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-              ),
+              // Text(
+              //   account.bankName,
+              //   style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              //         color: Colors.grey[600],
+              //       ),
+              // ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -349,7 +345,6 @@ class _AccountDropdownItem extends StatelessWidget {
         ),
       ],
     );
-  }
 
   IconData _getAccountTypeIcon(AccountType type) {
     switch (type) {
